@@ -16,6 +16,6 @@ class Node:
 
 
 class Stage:
-    def __init__(self, vehicles, map):
+    def __init__(self, vehicles, gmap):
         self.vehicles = vehicles
-        self.map = map
+        self.gmap = gmap
