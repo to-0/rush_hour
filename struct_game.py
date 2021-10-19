@@ -19,3 +19,5 @@ class Stage:
     def __init__(self, vehicles, gmap):
         self.vehicles = vehicles
         self.gmap = gmap
+        self.id = 0
+

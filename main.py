@@ -4,6 +4,10 @@
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 import copy
 import enum
+import time
+
+import numpy as numpy
+
 from struct_game import *
 
 class Movement(enum.Enum):
@@ -111,6 +115,9 @@ def move_down(stage, vehicle, steps):
 
 def check_final(node):
     vehicle = node.stage.vehicles[0]
+    #print(vehicle.column)
+    if vehicle.column == 4:
+        return True
     to_head = vehicle.column+vehicle.size-1
     if to_head == 5:
         return True
@@ -157,17 +164,40 @@ def print_stage(stage):
 def calculate_id(stage):
     idstage = 0
     counter = 1
-    vehicles = stage.vehicles
     for vehicle in stage.vehicles:
-        idstage += counter * (vehicle.color * vehicle.size * vehicle.column * vehicle.row) * 11
+        idstage += counter * (vehicle.color * vehicle.size * vehicle.column * vehicle.row)
         counter += 1
     return idstage
+
+
 # NEVIEM CI TU NEBUDU KOLIZIE
 def filter_stage(stage, processed_states):
     idstage = calculate_id(stage)
-    if processed_states.get(idstage) is None:
+    stage.id = idstage
+    found = processed_states.get(idstage)
+    if found is None:
         return True
     else:
+        duplicate = False
+        # mam koliziu mozno ale porovnam proste tie arrays...
+        for fstage in found:
+            # if numpy.array_equal(stage.gmap, fstage.gmap):
+            #     duplicate = True
+            #     #print("mam duplikat")
+            #     break
+            i = 0
+            matches = 0
+            while i < len(fstage.vehicles):
+                v1 = fstage.vehicles[i]
+                v2 = stage.vehicles[i]
+                if v1.row == v2.row and v1.column == v2.column and v1.color == v2.color:
+                    matches +=1
+                i+=1
+            if matches == len(fstage.vehicles):
+                del stage # neviem ci to usetri pamat heh...
+                return False # nie je unikatny
+        if not duplicate:
+            return True
         return False
 
 
@@ -180,43 +210,58 @@ def create_children(node, processed_states):
         row = vehicle.row
         column = vehicle.column
         stage = node.stage
+        to_head = vehicle.size -1
         for i in range(1, 6):
             history = node.operator
             if vehicle.direction == 1:
                 # ked je zablokovane z oboch stran proste sa nikam nepohnem
-                if (column - 1 >= 0 and node.stage.gmap[row][column-1] == 1) or (
-                        column+1 < 6 and node.stage.gmap[row][column+1] == 1):
-                    break
-                if history is None or (not (history[0] == "R" and history[1] == vehicle.color and history[2] == i)):
+                if column+to_head < 5:
+                    if (column - 1 >= 0 and node.stage.gmap[row][column-1] == 1) or (
+                            column+1 < 6 and node.stage.gmap[row][column+to_head + 1] == 1):
+                        break
+                if history is None or (not (history[0] == "L" and history[1] == vehicle.color)): #and history[2] == i)
                     stage = move_right(node.stage, vehicle, i)
                     # ak je unikatny ten stav, este som ho nespracoval
                     if stage is not None and filter_stage(stage, processed_states):
-                        n = Node(stage, node, ["L", vehicle.color, i])
-                        print_map(n.stage.gmap)
+                        n = Node(stage, node, ["R", vehicle.color, i])
+                        #print_map(n.stage.gmap)
+                        # if check_final(n):
+                        #     print("Yay")
+                        #     exit(1)
                         children_list.append(n)
-                if history is None or not (history[0] == "L" and history[1] != vehicle.color and history[2] != i):
+                if history is None or not (history[0] == "R" and history[1] != vehicle.color): # and history[2] != i
                     stage = move_left(node.stage, vehicle, i)
                     if stage is not None and filter_stage(stage, processed_states):
                         n = Node(stage, node, ["L", vehicle.color, i])
-                        print_map(n.stage.gmap)
+                        #print_map(n.stage.gmap)
+                        if check_final(n):
+                            print("Yay")
+                            exit(1)
                         children_list.append(n)
             else:
                 # ked je zablokovane z oboch stran proste sa nikam nepohnem
-                if (row - 1 >= 0 and node.stage.gmap[row-1][column] == 1) or (
-                        row+ 1 < 6 and node.stage.gmap[row+1][column] == 1):
-                    break
-                if history is None or not (history[0] == "U" and history[1] == vehicle.color and history[2] == i):
+                if row+to_head < 5:
+                    if (row - 1 >= 0 and node.stage.gmap[row-1][column] == 1) or (
+                            row+ 1 < 6 and node.stage.gmap[row+to_head+1][column] == 1):
+                        break
+                if history is None or not (history[0] == "D" and history[1] == vehicle.color): # and history[2] == i
                     stage = move_up(node.stage, vehicle, i)
                     # ak je unikatny ten stav, este som ho nespracoval
                     if stage is not None and filter_stage(stage, processed_states):
                         n = Node(stage, node, ["U", vehicle.color, i])
-                        print_map(n.stage.gmap)
+                        #print_map(n.stage.gmap)
+                        if check_final(n):
+                            print("Yay")
+                            exit(1)
                         children_list.append(n)
-                if history is None or not (history[0] == "D" and history[1] != vehicle.color and history[2] != i):
+                if history is None or not (history[0] == "U" and history[1] != vehicle.color): # and history[2] != i
                     stage = move_down(node.stage, vehicle, i)
                     if stage is not None and filter_stage(stage, processed_states):
                         n = Node(stage, node, ["D", vehicle.color, i])
-                        print_map(n.stage.gmap)
+                        #print_map(n.stage.gmap)
+                        if check_final(n):
+                            print("Yay")
+                            exit(1)
                         children_list.append(n)
     return children_list
 
@@ -238,56 +283,65 @@ def print_map(gmap):
         print(s)
     print("-"*30)
 
+# z kontroly viem ze je to unikatne
+def add_to_processed(stage, processed_states):
+    idstage = stage.id
+    found = processed_states.get(idstage)
+    if found is None:
+        processed_states[idstage] = [stage]
+    else:
+        found.append(stage)
 
-def search(que, processed_nodes, search_type):
+
+def search(que_l, processed_nodes, search_type):
     # que je uz prazdne a nenasiel som zatial riesenie takze neexistuje
 
-    if len(que) == 0:
+    if len(que_l) == 0:
         return False
     i = 0
-    while i< len(que):
-        node = que[i]
+    counter = 0
+    while i < len(que_l):
+        counter += 1
+        #print("spracovavany node v poradi " + str(counter))
+        #print("Dlzka que"+str(len(que_l)))
+        node = que_l[i]
+        #node = que[i]
         #stav = move_right(node.stage,node.stage.vehicles[1],3)
         if check_final(node):
+            print("SKONCILI SME DAB DAB")
             return True
         children = create_children(node, processed_nodes)
-        print(len(children))
-        #for child in children:
-        # i = 0
-        # while i < len(children):
-        #     child = children[i]
-        #     print_map(child.stage.gmap)
-        #     i += 1
-        #
-        # id_s = calculate_id(node.stage)
-        # processed_nodes[id_s] = 1
-        que.remove(node)
-        #
-        # for child in children:
-        #     if search_type == 1:
-        #         que.append(child)
-        #     else:
-        #         que.insert(child)
+        #print(len(children))
+        que_l.remove(node)
+        #que_l = que_l[1:]
+        add_to_processed(node.stage, processed_nodes)
+        for child in children:
+            if search_type == 1:
+                que_l.append(child)
+            else:
+                que_l.insert(0, child)
 
-
+    return False
 
 
 
 def main(name):
-    # print_stage(stage)
-    # root = Node(stage, None)
-    # processed_states = []
-    # que = []
-    # que.append(root)
-    # # process_node(que, processed_states)
     stage = load_stage("stav1.txt")
     #print_stage(stage)
     #print_map(stage.gmap)
     root = Node(stage, None, None)
+    root.stage.id = calculate_id(root.stage)
     que = [root] # que
     processed_nodes = {}
     # do sirky ma 1 do hlbky 0
-    search(que, processed_nodes, 1)
+    start = time.time()
+    if search(que, processed_nodes, 1):
+        print("Skoncili sme uspesne")
+    else:
+        print("Skoncili sme neuspesne")
+    end = time.time()
+    print("Cas programu {:0.2f} s".format(end-start))
+    print("Cas programu {:0.2f} minut".format((end - start)/60))
 
 
 
