@@ -8,18 +8,14 @@ import time
 
 from struct_game import *
 
-class Movement(enum.Enum):
-    left = 0
-    right = 1
-    up = 2
-    down = 3
+map_rows, map_columns = 0, 0
 
 def move_right(stage, vehicle, steps):
     row = vehicle.row
     column = vehicle.column
     to_head = vehicle.size - 1
     new_stage = None
-    if column+to_head+steps > 5:
+    if column+to_head+steps > (map_columns-1):
         return None
     new_stage = copy.deepcopy(stage)
     new_map = new_stage.gmap
@@ -92,7 +88,7 @@ def move_down(stage, vehicle, steps):
     column = vehicle.column
     to_head = vehicle.size - 1
     new_stage = None
-    if row+to_head + steps > 5:
+    if row+to_head + steps > (map_rows-1):
         return None
     new_stage = copy.deepcopy(stage)
     new_map = new_stage.gmap
@@ -126,7 +122,12 @@ def load_stage(name):
     lines = f.readlines()
     vehicles = []
     game_map = [[0 for i in range(6)] for j in range(6)]
-    for line in lines:
+    l = lines[1].split(" ")
+    global map_rows
+    global map_columns
+    map_rows = int(l[0])
+    map_columns = int(l[1])
+    for line in lines[2:]:
         line = line.strip('\n')
         line = line.split(" ")
         if line[0][0]=="#":
@@ -163,8 +164,8 @@ def calculate_id(stage):
     idstage = 0
     counter = 1
     for vehicle in stage.vehicles:
-        #idstage += counter * (vehicle.color * vehicle.size * vehicle.column * vehicle.row)
-        idstage = idstage*31+counter * (vehicle.color * vehicle.size * vehicle.column * vehicle.row)
+        idstage += counter * (vehicle.color * vehicle.size * vehicle.column * vehicle.row)
+        #idstage = idstage*31+counter * (vehicle.color * vehicle.size * vehicle.column * vehicle.row)
         counter += 1
     return idstage
 
@@ -203,6 +204,8 @@ def filter_stage(stage, processed_states):
 def create_children(node, processed_states, children_list):
     #children_list = []
     counter = 0
+    global map_rows
+    global map_columns
     for vehicle in node.stage.vehicles:
         row_offset = 0
         column_offset = 0
@@ -210,36 +213,36 @@ def create_children(node, processed_states, children_list):
         column = vehicle.column
         stage = node.stage
         to_head = vehicle.size -1
-        for i in range(1, 6):
-            history = node.operator
-            if vehicle.direction == 1:
-                # ked je zablokovane z oboch stran proste sa nikam nepohnem
-                if column+to_head < 5:
-                    if (column - 1 >= 0 and node.stage.gmap[row][column-1] == 1) or (
-                            column+1 < 6 and node.stage.gmap[row][column+to_head + 1] == 1):
+        history = node.operator
+        if vehicle.direction == 1:
+            # ked je zablokovane z oboch stran proste sa nikam nepohnem
+            for i in range(1, map_columns):
+                if column + to_head < (map_columns-1):
+                    if (column - 1 >= 0 and node.stage.gmap[row][column - 1] == 1) or (
+                            column + 1 < 6 and node.stage.gmap[row][column + to_head + 1] == 1):
                         break
-                if history is None or (not (history[0] == "L" and history[1] == vehicle.color)): #and history[2] == i)
+                if history is None or (not (history[0] == "L" and history[1] == vehicle.color)):  # and history[2] == i)
                     stage = move_right(node.stage, vehicle, i)
                     # ak je unikatny ten stav, este som ho nespracoval
                     if stage is not None and filter_stage(stage, processed_states):
                         n = Node(stage, node, ["R", vehicle.color, i], node.depth + 1)
-                        #print_map(n.stage.gmap)
+                        # print_map(n.stage.gmap)
                         if check_final(n):
                             children_list.append(n)
                             return -1
                         children_list.append(n)
-                if history is None or not (history[0] == "R" and history[1] == vehicle.color): # and history[2] != i
+                if history is None or not (history[0] == "R" and history[1] == vehicle.color):  # and history[2] != i
                     stage = move_left(node.stage, vehicle, i)
                     if stage is not None and filter_stage(stage, processed_states):
                         n = Node(stage, node, ["L", vehicle.color, i], node.depth + 1)
-                        #print_map(n.stage.gmap)
+                        # print_map(n.stage.gmap)
                         if check_final(n):
                             children_list.append(n)
                             return -1
                         children_list.append(n)
-            else:
-                # ked je zablokovane z oboch stran proste sa nikam nepohnem
-                if row+to_head < 5:
+        else:
+            for i in range(1,  map_rows):
+                if row+to_head < (map_rows-1):
                     if (row - 1 >= 0 and node.stage.gmap[row-1][column] == 1) or (
                             row+ 1 < 6 and node.stage.gmap[row+to_head+1][column] == 1):
                         break
@@ -262,6 +265,60 @@ def create_children(node, processed_states, children_list):
                             children_list.append(n)
                             return -1
                         children_list.append(n)
+
+
+        # for i in range(1, 6):
+        #     history = node.operator
+        #     if vehicle.direction == 1:
+        #         # ked je zablokovane z oboch stran proste sa nikam nepohnem
+        #         if column+to_head < 5:
+        #             if (column - 1 >= 0 and node.stage.gmap[row][column-1] == 1) or (
+        #                     column+1 < 6 and node.stage.gmap[row][column+to_head + 1] == 1):
+        #                 break
+        #         if history is None or (not (history[0] == "L" and history[1] == vehicle.color)): #and history[2] == i)
+        #             stage = move_right(node.stage, vehicle, i)
+        #             # ak je unikatny ten stav, este som ho nespracoval
+        #             if stage is not None and filter_stage(stage, processed_states):
+        #                 n = Node(stage, node, ["R", vehicle.color, i], node.depth + 1)
+        #                 #print_map(n.stage.gmap)
+        #                 if check_final(n):
+        #                     children_list.append(n)
+        #                     return -1
+        #                 children_list.append(n)
+        #         if history is None or not (history[0] == "R" and history[1] == vehicle.color): # and history[2] != i
+        #             stage = move_left(node.stage, vehicle, i)
+        #             if stage is not None and filter_stage(stage, processed_states):
+        #                 n = Node(stage, node, ["L", vehicle.color, i], node.depth + 1)
+        #                 #print_map(n.stage.gmap)
+        #                 if check_final(n):
+        #                     children_list.append(n)
+        #                     return -1
+        #                 children_list.append(n)
+        #     else:
+        #         # ked je zablokovane z oboch stran proste sa nikam nepohnem
+        #         if row+to_head < 5:
+        #             if (row - 1 >= 0 and node.stage.gmap[row-1][column] == 1) or (
+        #                     row+ 1 < 6 and node.stage.gmap[row+to_head+1][column] == 1):
+        #                 break
+        #         if history is None or not (history[0] == "D" and history[1] == vehicle.color): # and history[2] == i
+        #             stage = move_up(node.stage, vehicle, i)
+        #             # ak je unikatny ten stav, este som ho nespracoval
+        #             if stage is not None and filter_stage(stage, processed_states):
+        #                 n = Node(stage, node, ["U", vehicle.color, i], node.depth + 1)
+        #                 #print_map(n.stage.gmap)
+        #                 if check_final(n):
+        #                     children_list.append(n)
+        #                     return -1
+        #                 children_list.append(n)
+        #         if history is None or not (history[0] == "U" and history[1] == vehicle.color): # and history[2] != i
+        #             stage = move_down(node.stage, vehicle, i)
+        #             if stage is not None and filter_stage(stage, processed_states):
+        #                 n = Node(stage, node, ["D", vehicle.color, i], node.depth + 1)
+        #                 #print_map(n.stage.gmap)
+        #                 if check_final(n):
+        #                     children_list.append(n)
+        #                     return -1
+        #                 children_list.append(n)
     return len(children_list)
 
 
@@ -335,7 +392,7 @@ def print_steps(result_node):
 
 
 def main(name):
-    stage = load_stage("stav1.txt")
+    stage = load_stage("stav4.txt")
     #print_stage(stage)
     #print_map(stage.gmap)
     root = Node(stage, None, None, 0)
@@ -343,16 +400,29 @@ def main(name):
     que = [root] # que
     processed_nodes = {}
     # do sirky ma 1 do hlbky 0
+    print("Hladanie do sirky")
     start = time.time()
-    result = search(que, processed_nodes, 1)
+    result = search(que, processed_nodes, 0)
     if result is not None:
-        print("Skoncili sme uspesne")
         print_steps(result)
     else:
         print("Skoncili sme neuspesne")
     end = time.time()
     print("Cas programu {:0.2f} s".format(end-start))
     print("Cas programu {:0.2f} minut".format((end - start)/60))
+
+    print("Hladanie do hlbky")
+    start = time.time()
+    result = search(que, processed_nodes, 1)
+    if result is not None:
+        print_steps(result)
+    else:
+        print("Skoncili sme neuspesne")
+    end = time.time()
+    print("Cas programu {:0.2f} s".format(end - start))
+    print("Cas programu {:0.2f} minut".format((end - start) / 60))
+
+
 
 
 
