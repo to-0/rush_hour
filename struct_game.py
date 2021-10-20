@@ -9,10 +9,11 @@ class Vehicle:
 
 
 class Node:
-    def __init__(self, stage, parent, operator):
+    def __init__(self, stage, parent, operator, depth):
         self.stage = stage
         self.parent = parent
         self.operator = operator
+        self.depth = depth
 
 
 class Stage:
