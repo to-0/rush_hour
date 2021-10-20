@@ -4,6 +4,7 @@
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 import copy
 import time
+import random
 
 from struct_game import *
 
@@ -13,23 +14,20 @@ def move_right(stage, vehicle, steps):
     row = vehicle.row
     column = vehicle.column
     to_head = vehicle.size - 1
-    new_stage = None
     if column+to_head+steps > (map_columns-1):
         return None
-    new_stage = copy.deepcopy(stage)
-    new_map = new_stage.gmap
     #skontrolujem ci mam volnu cestu
     for i in range(1, steps+1):
         if stage.gmap[row][column+to_head+i] != 0:
             return None
+    new_stage = copy.deepcopy(stage)
+    new_map = new_stage.gmap
     #vycistim tu poziciu kde bolo auto a zaroven pridam novu poziciu
     for k in range(vehicle.size):
-        new_map[row][column + k] = 0
+        new_map[row][column +to_head-k] = 0
+        new_map[row][column+to_head+steps-k] = vehicle.color
     # vyznacim novu poziciu, ked som to mal spolu s tymto cyklom hore tak sa to prepisovalo ak som robil iba napr 1krok
-    for k in range(vehicle.size):
-        new_map[row][column + steps + k] = vehicle.color
-    vehicle2 = new_stage.vehicles[vehicle.color - 1]
-    vehicle2.column = column + steps
+    new_stage.vehicles[vehicle.color - 1].column = column+steps
     return new_stage
 
 
@@ -39,45 +37,36 @@ def move_left(stage, vehicle, steps):
     to_head = vehicle.size - 1
     if column - steps < 0:
         return None
-    new_stage = copy.deepcopy(stage)
-    new_map = new_stage.gmap
     # skontrolujem ci mam volnu cestu
     for i in range(1, steps + 1):
         if stage.gmap[row][column - i] != 0:
             return None
+    new_stage = copy.deepcopy(stage)
+    new_map = new_stage.gmap
     # vycistim tu poziciu kde bolo auto a zaroven pridam novu poziciu
-    # new_stage = Stage(stage.vehicles, stage.gmap)
-    # new_map = new_stage.gmap
     for k in range(vehicle.size):
         new_map[row][column + k] = 0
-
-    for k in range(vehicle.size):
-        new_map[row][column - steps + k] = vehicle.color
-    vehicle2 = new_stage.vehicles[vehicle.color - 1]
-    vehicle2.column = column - steps
+        new_map[row][column-steps+k]=vehicle.color
+    new_stage.vehicles[vehicle.color - 1].column = column-steps
     return new_stage
 
 def move_up(stage, vehicle, steps):
     row = vehicle.row
     column = vehicle.column
     to_head = vehicle.size - 1
-    new_stage = None
     if row - steps < 0:
         return None
-    new_stage = copy.deepcopy(stage)
-    new_map = new_stage.gmap
     # skontrolujem ci mam volnu cestu
     for i in range(1, steps + 1):
         if stage.gmap[row - i][column] != 0:
             return None
+    new_stage = copy.deepcopy(stage)
+    new_map = new_stage.gmap
     # vycistim tu poziciu kde bolo auto a zaroven pridam novu poziciu
     for k in range(vehicle.size):
         new_map[row + k][column] = 0
-
-    for k in range(vehicle.size):
-        new_map[row - steps + k][column] = vehicle.color
-    vehicle2 = new_stage.vehicles[vehicle.color - 1]
-    vehicle2.row = row - steps
+        new_map[row-steps+k][column]= vehicle.color
+    new_stage.vehicles[vehicle.color - 1].row = row-steps
     return new_stage
 
 
@@ -86,23 +75,19 @@ def move_down(stage, vehicle, steps):
     row = vehicle.row
     column = vehicle.column
     to_head = vehicle.size - 1
-    new_stage = None
     if row+to_head + steps > (map_rows-1):
         return None
-    new_stage = copy.deepcopy(stage)
-    new_map = new_stage.gmap
     # skontrolujem ci mam volnu cestu
     for i in range(1, steps + 1):
         if stage.gmap[row + to_head + i][column] != 0:
             return None
+    new_stage = copy.deepcopy(stage)
+    new_map = new_stage.gmap
     # vycistim tu poziciu kde bolo auto a zaroven pridam novu poziciu
     for k in range(vehicle.size):
-        new_map[row+ k][column] = 0
-
-    for k in range(vehicle.size):
-        new_map[row + steps + k][column] = vehicle.color
-    vehicle2 = new_stage.vehicles[vehicle.color - 1]
-    vehicle2.row = row + steps
+        new_map[row+to_head-k][column] = 0
+        new_map[row+to_head+steps-k][column] = vehicle.color
+    new_stage.vehicles[vehicle.color - 1].row = row+steps
     return new_stage
 
 
@@ -178,13 +163,9 @@ def filter_stage(stage, processed_states):
     if found is None:
         return True
     else:
+        # mam koliziu mozno ale porovnam proste este tie vozidla
         duplicate = False
-        # mam koliziu mozno ale porovnam proste tie arrays...
         for fstage in found:
-            # if numpy.array_equal(stage.gmap, fstage.gmap):
-            #     duplicate = True
-            #     #print("mam duplikat")
-            #     break
             i = 0
             matches = 0
             while i < len(fstage.vehicles):
@@ -202,75 +183,95 @@ def filter_stage(stage, processed_states):
 
 
 def create_children(node, processed_states, children_list, que_l, search_type):
-    #children_list = []
-    counter = 0
     global map_rows
     global map_columns
+    vehicles_length = len(node.stage.vehicles)
+    #indexes_list = random.sample(range(0, vehicles_length), vehicles_length)
+    #i = 0
+    #while i < vehicles_length:
+        #vehicle = node.stage.vehicles[indexes_list[i]]
     for vehicle in node.stage.vehicles:
-        row_offset = 0
-        column_offset = 0
         row = vehicle.row
         column = vehicle.column
         stage = node.stage
         to_head = vehicle.size -1
         history = node.operator
         if vehicle.direction == 1:
-            # ked je zablokovane z oboch stran proste sa nikam nepohnem
-            for i in range(1, map_columns):
+            # v buducnosti je to game_columns-(min_size-1)-colum mozem sa posunut max o n-1 policok a este ked odpocitam
+            # minimalnu dlzku auta co je 2 cize jedno policko uz mam vzdy automaticky ako keby tak n-2
+            # dolava sa mozem posunut max o column 0-5 a doprava map_columns (velkost+1) - column
+            if column < (map_columns-to_head-column):
+                max_steps = map_columns-to_head-column
+            else:
+                max_steps = column
+
+            for i in range(1, max_steps+1):
                 if column + to_head < (map_columns-1):
+                    # ked je zablokovane z oboch stran proste sa nikam nepohnem
                     if (column - 1 >= 0 and node.stage.gmap[row][column - 1] == 1) or (
                             column + 1 < 6 and node.stage.gmap[row][column + to_head + 1] == 1):
                         break
-                if history is None or (not (history[0] == "L" and history[1] == vehicle.color)):  # and history[2] == i)
+                if history is None or (not (history[0] == "L" and history[1] == vehicle.color)):
                     stage = move_right(node.stage, vehicle, i)
                     # ak je unikatny ten stav, este som ho nespracoval
                     if stage is not None and filter_stage(stage, processed_states):
                         n = Node(stage, node, ["R", vehicle.color, i], node.depth + 1)
-                        # print_map(n.stage.gmap)
+                        if search_type == 1:  # breadth first
+                            que_l.append(n)
+                        else:  # depth first
+                            que_l.insert(0, n)
+                        # children_list.append(n)
                         if check_final(n):
-                            if search_type==1: #breadth first
-                                que_l.append(n)
-                            else: # depth first
-                                que_l.insert(0,n)
-                            #children_list.append(n)
                             return -1
-                        children_list.append(n)
-                if history is None or not (history[0] == "R" and history[1] == vehicle.color):  # and history[2] != i
+                        #children_list.append(n)
+                if history is None or not (history[0] == "R" and history[1] == vehicle.color):
                     stage = move_left(node.stage, vehicle, i)
                     if stage is not None and filter_stage(stage, processed_states):
                         n = Node(stage, node, ["L", vehicle.color, i], node.depth + 1)
-                        # print_map(n.stage.gmap)
+                        if search_type == 1:  # breadth first
+                            que_l.append(n)
+                        else:  # depth first
+                            que_l.insert(0, n)
                         if check_final(n):
-                            children_list.append(n)
                             return -1
-                        children_list.append(n)
+                        #children_list.append(n)
+        # VERTIKALNE
         else:
-            for i in range(1,  map_rows):
+            if row < (map_rows-to_head-row):
+                max_steps = map_rows-to_head-row
+            else:
+                max_steps = row
+            for i in range(1,  max_steps+1):
                 if row+to_head < (map_rows-1):
                     if (row - 1 >= 0 and node.stage.gmap[row-1][column] == 1) or (
                             row+ 1 < 6 and node.stage.gmap[row+to_head+1][column] == 1):
                         break
-                if history is None or not (history[0] == "D" and history[1] == vehicle.color): # and history[2] == i
+                if history is None or not (history[0] == "D" and history[1] == vehicle.color):
                     stage = move_up(node.stage, vehicle, i)
                     # ak je unikatny ten stav, este som ho nespracoval
                     if stage is not None and filter_stage(stage, processed_states):
                         n = Node(stage, node, ["U", vehicle.color, i], node.depth + 1)
-                        #print_map(n.stage.gmap)
+                        if search_type == 1:  # breadth first
+                            que_l.append(n)
+                        else:  # depth first
+                            que_l.insert(0, n)
                         if check_final(n):
-                            children_list.append(n)
                             return -1
-                        children_list.append(n)
-                if history is None or not (history[0] == "U" and history[1] == vehicle.color): # and history[2] != i
+                        #children_list.append(n)
+                if history is None or not (history[0] == "U" and history[1] == vehicle.color):
                     stage = move_down(node.stage, vehicle, i)
                     if stage is not None and filter_stage(stage, processed_states):
                         n = Node(stage, node, ["D", vehicle.color, i], node.depth + 1)
-                        #print_map(n.stage.gmap)
+                        if search_type == 1:  # breadth first
+                            que_l.append(n)
+                        else:  # depth first
+                            que_l.insert(0, n)
                         if check_final(n):
-                            children_list.append(n)
                             return -1
-                        children_list.append(n)
+                        #children_list.append(n)
+        #i += 1
 
-    return len(children_list)
+    return 1
 
 
 def print_map(gmap):
@@ -293,7 +294,6 @@ def add_to_processed(stage, processed_states):
 
 def search(que_l, processed_nodes, search_type):
     # que je uz prazdne a nenasiel som zatial riesenie takze neexistuje
-
     if len(que_l) == 0:
         return None
     i = 0
@@ -301,34 +301,21 @@ def search(que_l, processed_nodes, search_type):
     if check_final(que_l[0]):
         return que_l[0]
     while i < len(que_l):
-        counter += 1
-        #print("spracovavany node v poradi " + str(counter))
-        #print("Dlzka que"+str(len(que_l)))
         node = que_l[i]
-        # if check_final(node):
-        #
-        #     return node
         children = []
-        result = ch_length = create_children(node, processed_nodes, children, que_l, search_type)
-
+        ch_length = create_children(node, processed_nodes, children, que_l, search_type)
         if ch_length == -1:
-            end_node = children[-1]
+            if search_type == 1:
+                end_node = que_l[-1]
+            else:
+                end_node = que_l[0]
+            #end_node = children[-1]
             print("Pocet spracovanych uzlov", counter)
             print("Dlzka frontu na konci", len(que_l))
             return end_node
-        #print(len(children))
         que_l.remove(node)
-        #que_l = que_l[1:]
         add_to_processed(node.stage, processed_nodes)
-        if search_type == 1:
-            for child in children:
-                que_l.append(child)
-        else:
-            i = len(children)-1
-            while i >= 0:
-                child = children[i]
-                que_l.insert(0, child)
-                i -=1
+        counter += 1
     return None
 
 
@@ -340,14 +327,18 @@ def print_steps(result_node):
         if parent.operator is not None:
             steps.insert(0, parent.operator)
         parent = parent.parent
+    print("Pocet krokov",len(steps))
     print(steps)
+    print_map(result_node.parent.stage.gmap)
+    print_map(result_node.stage.gmap)
 
 
 def main(name):
-    stage = load_stage("stav4 .txt")
+    stage = load_stage("stav4.txt")
     #print_stage(stage)
     #print_map(stage.gmap)
     root = Node(stage, None, None, 0)
+    print_map(stage.gmap)
     root.stage.id = calculate_id(root.stage)
     que = [root] # que
     processed_nodes = {}
