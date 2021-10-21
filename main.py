@@ -10,6 +10,7 @@ from struct_game import *
 
 map_rows, map_columns = 0, 0
 
+
 def move_right(stage, vehicle, steps):
     row = vehicle.row
     column = vehicle.column
@@ -149,10 +150,28 @@ def calculate_id(stage):
     idstage = 0
     counter = 1
     for vehicle in stage.vehicles:
-        idstage = idstage*31 + (vehicle.color * vehicle.size * vehicle.column * vehicle.row)
+        idstage = idstage*31 + (vehicle.color * vehicle.size + vehicle.column * vehicle.row)
         #idstage = idstage*31+counter * (vehicle.color * vehicle.size * vehicle.column * vehicle.row)
         counter += 1
     return idstage
+
+def filter_node(node):
+    parent = node.parents
+    stage = node.stage
+    while parent is not None:
+        fstage = parent.stage
+        i = 0
+        matches = 0
+        while i < len(fstage.vehicles):
+            v1 = fstage.vehicles[i]
+            v2 = stage.vehicles[i]
+            if v1.row == v2.row and v1.column == v2.column and v1.color == v2.color:
+                matches += 1
+            i += 1
+        # nasiel som zhodu
+        if matches == len(fstage.vehicles):
+            del stage  # neviem ci to usetri pamat heh...
+            return False  # nie je unikatny
 
 
 # NEVIEM CI TU NEBUDU KOLIZIE
@@ -174,12 +193,11 @@ def filter_stage(stage, processed_states):
                 if v1.row == v2.row and v1.column == v2.column and v1.color == v2.color:
                     matches +=1
                 i+=1
+            #nasiel som zhodu
             if matches == len(fstage.vehicles):
                 del stage # neviem ci to usetri pamat heh...
                 return False # nie je unikatny
-        if not duplicate:
-            return True
-        return False
+        return True
 
 
 def create_children(node, processed_states, children_list, que_l, search_type):
@@ -192,7 +210,7 @@ def create_children(node, processed_states, children_list, que_l, search_type):
         to_head = vehicle.size -1
         history = node.operator
         if vehicle.direction == 1:
-            # v buducnosti je to game_columns-(min_size-1)-colum mozem sa posunut max o n-1 policok a este ked odpocitam
+            # je to game_columns-(min_size-1)-colum mozem sa posunut max o n-1 policok a este ked odpocitam
             # minimalnu dlzku auta co je 2 cize jedno policko uz mam vzdy automaticky ako keby tak n-2
             # dolava sa mozem posunut max o column 0-5 a doprava map_columns (velkost+1) - column
             if column < (map_columns-to_head-column):
@@ -216,7 +234,7 @@ def create_children(node, processed_states, children_list, que_l, search_type):
                             que_l.append(n)
                         else:  # depth first
                             que_l.insert(0, n)
-                        # children_list.append(n)
+                        #children_list.append(n)
                         if check_final(n):
                             return -1
                         #children_list.append(n)
@@ -228,9 +246,10 @@ def create_children(node, processed_states, children_list, que_l, search_type):
                             que_l.append(n)
                         else:  # depth first
                             que_l.insert(0, n)
+                        #children_list.append(n)
                         if check_final(n):
                             return -1
-                        #children_list.append(n)
+
         # VERTIKALNE
         else:
             if row < (map_rows-to_head-row):
@@ -247,13 +266,13 @@ def create_children(node, processed_states, children_list, que_l, search_type):
                     # ak je unikatny ten stav, este som ho nespracoval
                     if stage is not None and filter_stage(stage, processed_states):
                         n = Node(stage, node, ['U', vehicle.color, i], node.depth + 1)
+                        #children_list.append(n)
                         if search_type == 1:  # breadth first
                             que_l.append(n)
                         else:  # depth first
                             que_l.insert(0, n)
                         if check_final(n):
                             return -1
-                        #children_list.append(n)
                 if history is None or not (history[0] == 'U' and history[1] == vehicle.color):
                     stage = move_down(node.stage, vehicle, i)
                     if stage is not None and filter_stage(stage, processed_states):
@@ -262,12 +281,13 @@ def create_children(node, processed_states, children_list, que_l, search_type):
                             que_l.append(n)
                         else:  # depth first
                             que_l.insert(0, n)
+                        #children_list.append(n)
                         if check_final(n):
                             return -1
-                        #children_list.append(n)
+                        #
         #i += 1
 
-    return 1
+    return 0
 
 
 def print_map(gmap):
@@ -297,9 +317,11 @@ def search(que_l, processed_nodes, search_type):
     if check_final(que_l[0]):
         return que_l[0]
     while i < len(que_l):
-        node = que_l[i]
+        node = que_l.pop(0)
         children = []
+        #print("Hlbka ", node.depth)
         ch_length = create_children(node, processed_nodes, children, que_l, search_type)
+        #print("vygeneroval som potomkov")
         if ch_length == -1:
             if search_type == 1:
                 end_node = que_l[-1]
@@ -309,7 +331,7 @@ def search(que_l, processed_nodes, search_type):
             print("Pocet spracovanych uzlov", counter)
             print("Dlzka frontu na konci", len(que_l))
             return end_node
-        que_l.remove(node)
+        #que_l.remove(node)
         add_to_processed(node.stage, processed_nodes)
         counter += 1
     return None
@@ -334,7 +356,7 @@ def main(name):
     #print_stage(stage)
     #print_map(stage.gmap)
     root = Node(stage, None, None, 0)
-    print_map(stage.gmap)
+    #print_map(stage.gmap)
     root.stage.id = calculate_id(root.stage)
     que = [root] # que
     processed_nodes = {}
