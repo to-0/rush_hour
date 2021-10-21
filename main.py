@@ -149,7 +149,7 @@ def calculate_id(stage):
     idstage = 0
     counter = 1
     for vehicle in stage.vehicles:
-        idstage += counter * (vehicle.color * vehicle.size * vehicle.column * vehicle.row)
+        idstage = idstage*31 + (vehicle.color * vehicle.size * vehicle.column * vehicle.row)
         #idstage = idstage*31+counter * (vehicle.color * vehicle.size * vehicle.column * vehicle.row)
         counter += 1
     return idstage
@@ -185,11 +185,6 @@ def filter_stage(stage, processed_states):
 def create_children(node, processed_states, children_list, que_l, search_type):
     global map_rows
     global map_columns
-    vehicles_length = len(node.stage.vehicles)
-    #indexes_list = random.sample(range(0, vehicles_length), vehicles_length)
-    #i = 0
-    #while i < vehicles_length:
-        #vehicle = node.stage.vehicles[indexes_list[i]]
     for vehicle in node.stage.vehicles:
         row = vehicle.row
         column = vehicle.column
@@ -211,11 +206,12 @@ def create_children(node, processed_states, children_list, que_l, search_type):
                     if (column - 1 >= 0 and node.stage.gmap[row][column - 1] == 1) or (
                             column + 1 < 6 and node.stage.gmap[row][column + to_head + 1] == 1):
                         break
-                if history is None or (not (history[0] == "L" and history[1] == vehicle.color)):
+
+                if history is None or (not (history[0] == 'L' and history[1] == vehicle.color)):
                     stage = move_right(node.stage, vehicle, i)
                     # ak je unikatny ten stav, este som ho nespracoval
                     if stage is not None and filter_stage(stage, processed_states):
-                        n = Node(stage, node, ["R", vehicle.color, i], node.depth + 1)
+                        n = Node(stage, node, ['R', vehicle.color, i], node.depth + 1)
                         if search_type == 1:  # breadth first
                             que_l.append(n)
                         else:  # depth first
@@ -224,10 +220,10 @@ def create_children(node, processed_states, children_list, que_l, search_type):
                         if check_final(n):
                             return -1
                         #children_list.append(n)
-                if history is None or not (history[0] == "R" and history[1] == vehicle.color):
+                if history is None or not (history[0] == 'R' and history[1] == vehicle.color):
                     stage = move_left(node.stage, vehicle, i)
                     if stage is not None and filter_stage(stage, processed_states):
-                        n = Node(stage, node, ["L", vehicle.color, i], node.depth + 1)
+                        n = Node(stage, node, ['L', vehicle.color, i], node.depth + 1)
                         if search_type == 1:  # breadth first
                             que_l.append(n)
                         else:  # depth first
@@ -246,11 +242,11 @@ def create_children(node, processed_states, children_list, que_l, search_type):
                     if (row - 1 >= 0 and node.stage.gmap[row-1][column] == 1) or (
                             row+ 1 < 6 and node.stage.gmap[row+to_head+1][column] == 1):
                         break
-                if history is None or not (history[0] == "D" and history[1] == vehicle.color):
+                if history is None or not (history[0] == 'D' and history[1] == vehicle.color):
                     stage = move_up(node.stage, vehicle, i)
                     # ak je unikatny ten stav, este som ho nespracoval
                     if stage is not None and filter_stage(stage, processed_states):
-                        n = Node(stage, node, ["U", vehicle.color, i], node.depth + 1)
+                        n = Node(stage, node, ['U', vehicle.color, i], node.depth + 1)
                         if search_type == 1:  # breadth first
                             que_l.append(n)
                         else:  # depth first
@@ -258,10 +254,10 @@ def create_children(node, processed_states, children_list, que_l, search_type):
                         if check_final(n):
                             return -1
                         #children_list.append(n)
-                if history is None or not (history[0] == "U" and history[1] == vehicle.color):
+                if history is None or not (history[0] == 'U' and history[1] == vehicle.color):
                     stage = move_down(node.stage, vehicle, i)
                     if stage is not None and filter_stage(stage, processed_states):
-                        n = Node(stage, node, ["D", vehicle.color, i], node.depth + 1)
+                        n = Node(stage, node, ['D', vehicle.color, i], node.depth + 1)
                         if search_type == 1:  # breadth first
                             que_l.append(n)
                         else:  # depth first
@@ -289,7 +285,7 @@ def add_to_processed(stage, processed_states):
     if found is None:
         processed_states[idstage] = [stage]
     else:
-        found.append(stage)
+        found.insert(0,stage)
 
 
 def search(que_l, processed_nodes, search_type):
@@ -334,7 +330,7 @@ def print_steps(result_node):
 
 
 def main(name):
-    stage = load_stage("stav4.txt")
+    stage = load_stage("stav1.txt")
     #print_stage(stage)
     #print_map(stage.gmap)
     root = Node(stage, None, None, 0)
