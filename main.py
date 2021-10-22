@@ -1,7 +1,3 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 import time
 
 from struct_game import *
@@ -36,7 +32,7 @@ def move_right(stage, vehicle, steps):
     #vycistim tu poziciu kde bolo auto a zaroven pridam novu poziciu
     for k in range(vehicle[1]):
         new_map[row][column +to_head-k] = 0
-        new_map[row][column+to_head+steps-k] = vehicle[0]
+        new_map[row][column+to_head+steps-k] = vehicle[0] #vehicle[0] je farba
     # vyznacim novu poziciu, ked som to mal spolu s tymto cyklom hore tak sa to prepisovalo ak som robil iba napr 1krok
     new_stage.vehicles[vehicle[0] - 1][3] = column+steps
     end = time.time()
@@ -166,8 +162,8 @@ def print_stage(stage):
 def calculate_id(stage):
     idstage = 0
     for vehicle in stage.vehicles:
-        idstage = idstage * 89 + (vehicle[1]*vehicle[0] * vehicle[3] + vehicle[0] * vehicle[2]*vehicle[1]) * vehicle[1]*(
-            vehicle[2] - vehicle[3])
+        #vehicle[0] - farba, vehicle[1] - velkost, vehicle[2] - riadok, vehicle[3] - stlpec, vehicle[4] otocenie
+        idstage = idstage * 89 + (vehicle[1]*vehicle[0] * vehicle[3] + vehicle[0] * vehicle[2]*vehicle[1]) * vehicle[1]
 
     return idstage
 
@@ -315,9 +311,9 @@ def create_children(node, processed_states, que_l, search_type):
 
 
 def print_map(gmap):
-    for i in range(6):
+    for i in range(map_rows):
         s = ""
-        for j in range(6):
+        for j in range(map_columns):
             s+=str(gmap[i][j]) +" "
         print(s)
     print("-"*30)
@@ -357,7 +353,7 @@ def search(que_l, search_type):
             print("Z toho cas kedy som filtroval ", time_filter)
             print("Cize cisty cas create_children ze sa iba hybem a skusam ", time_create_children-time_filter)
             print("Cas kedy sa HYBEM IBA", time_move)
-            print("cas copy",time_deep_copy)
+            print("cas copy", time_deep_copy)
             return end_node
         counter += 1
         add_to_processed(node.stage, processed_nodes)
