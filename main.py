@@ -2,7 +2,6 @@
 
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-import copy
 import time
 
 from struct_game import *
@@ -74,7 +73,6 @@ def move_up(stage, vehicle, steps):
     start = time.time()
     row = vehicle.row
     column = vehicle.column
-    to_head = vehicle.size - 1
     st = time.time()
     #new_stage = copy.deepcopy(stage)
     new_stage = copy_stage(stage)
@@ -89,7 +87,6 @@ def move_up(stage, vehicle, steps):
     end = time.time()
     time_move += end - start
     return new_stage
-
 
 
 def move_down(stage, vehicle, steps):
@@ -177,56 +174,7 @@ def calculate_id(stage):
     return idstage
 
 
-def filter_node2(node, processed_nodes):
-    for pnode in processed_nodes:
-        if pnode.depth < node.depth:
-            return True
-
-        pstage = pnode.stage
-        ustage = node.stage
-        i = 0
-        matches = 0
-        while i < len(pstage.vehicles):
-            v1 = pstage.vehicles[i]
-            v2 = ustage.vehicles[i]
-            if v1.row == v2.row and v1.column == v2.column and v1.color == v2.color:
-                matches += 1
-            else:
-                break
-            i += 1
-        if matches== len(pstage.vehicles):
-            return False # nasiel som zhodu
-    return True # je unikatne
-
-
-# vrati true ak je unikatny a false ak nie je unikatny
-def filter_node(node):
-    #print("Idem hladat")
-    parent = node.parent
-    stage = node.stage
-    while parent is not None:
-        fstage = parent.stage
-        i = 0
-        matches = 0
-        while i < len(fstage.vehicles):
-            v1 = fstage.vehicles[i]
-            v2 = stage.vehicles[i]
-            if v1.row == v2.row and v1.column == v2.column and v1.color == v2.color:
-                matches += 1
-            else:
-                break
-            i += 1
-        # nasiel som zhodu
-        if matches == len(fstage.vehicles):
-            #del stage  # neviem ci to usetri pamat heh...
-            print("Mam duplikat vo vetve")
-            #print("Dohladal som")
-            return False  # nie je unikatny
-        parent = parent.parent
-    #print("Dohladal som")
-    return True # je unikatny
-
-
+# vrati true ak nie je duplikat, false ak je
 def filter_stage(stage, processed_states):
     global time_filter
     start = time.time()
@@ -240,11 +188,9 @@ def filter_stage(stage, processed_states):
         return True
     else:
         # mam koliziu mozno ale porovnam proste este tie vozidla
-        duplicate = False
         for fstage in found:
             i = 0
             matches = 0
-
             while i < vehicles_length:
                 v1 = fstage.vehicles[i] # budu rovnkakej farby lebo ich beriem z rovnakeho indexu
                 v2 = stage.vehicles[i]
@@ -255,7 +201,6 @@ def filter_stage(stage, processed_states):
                 i+=1
             #nasiel som zhodu
             if matches == len(fstage.vehicles):
-                #del stage # neviem ci to usetri pamat heh...
                 end = time.time()
                 time_filter += (end-start)
                 return False # nie je unikatny
@@ -341,7 +286,7 @@ def create_children(node, processed_states, que_l, search_type):
                     break
                 max_up += 1
             max_steps = max(max_up, max_down)
-            if max == 0:
+            if max_steps == 0:
                 continue
 
             for i in range(1,  max_steps+1):
@@ -396,7 +341,9 @@ def search(que_l, search_type):
         return que_l[0]
     while que_l:
         node = que_l.pop(0)
-        print("Spracovane", counter)
+        # if check_final(node):
+        #     return node
+        #print("Spracovane", counter)
         #print("Hlbka ", node.depth)
         ch_length = create_children(node, processed_nodes, que_l, search_type)
         #print("vygeneroval som potomkov ",ch_length)
@@ -412,11 +359,10 @@ def search(que_l, search_type):
             print("Z toho cas kedy som filtroval ", time_filter)
             print("Cize cisty cas create_children ze sa iba hybem a skusam ", time_create_children-time_filter)
             print("Cas kedy sa HYBEM IBA", time_move)
-            print("cas deep copy",time_deep_copy)
+            print("cas copy",time_deep_copy)
             return end_node
         counter += 1
         add_to_processed(node.stage, processed_nodes)
-
     return None
 
 
@@ -435,7 +381,7 @@ def print_steps(result_node):
 
 
 def main(name):
-    stage = load_stage("stav1.txt")
+    stage = load_stage("stav4.txt")
     #print_stage(stage)
     #print_map(stage.gmap)
     root = Node(stage, None, None, 0)
