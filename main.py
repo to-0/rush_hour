@@ -242,7 +242,7 @@ def create_children(node, processed_states, que_l, search_type):
                         stage = move_right(node.stage, vehicle, i)
                         # ak je unikatny ten stav, este som ho nespracoval
                         if filter_stage(stage, processed_states):
-                            n = Node(stage, node, ['R', vehicle[0], i], node.depth + 1)
+                            n = Node(stage, node, ['R', vehicle[0], i], node.depth+1)
                             count += 1
                             if search_type == 1:  # breadth first
                                 que_l.append(n)
@@ -256,7 +256,7 @@ def create_children(node, processed_states, que_l, search_type):
                     if i<=max_left:
                         stage = move_left(node.stage, vehicle, i)
                         if filter_stage(stage, processed_states):
-                            n = Node(stage, node, ['L', vehicle[0], i], node.depth + 1)
+                            n = Node(stage, node, ['L', vehicle[0], i],node.depth +1)
                             count += 1
                             if search_type == 1:  # breadth first
                                 que_l.append(n)
@@ -288,8 +288,8 @@ def create_children(node, processed_states, que_l, search_type):
                     if i<=max_up:
                         stage = move_up(node.stage, vehicle, i)
                         # ak je unikatny ten stav, este som ho nespracoval
-                        n = Node(stage, node, ['U', vehicle[0], i], node.depth + 1)
                         if filter_stage(stage, processed_states):
+                            n = Node(stage, node, ['U', vehicle[0], i],node.depth+1)
                             count += 1
                             if search_type == 1:  # breadth first
                                 que_l.append(n)
@@ -298,8 +298,8 @@ def create_children(node, processed_states, que_l, search_type):
                 if history is None or not (history[0] == 'U' and history[1] == vehicle[0]) and try2 != -1:
                     if i<=max_down:
                         stage = move_down(node.stage, vehicle, i)
-                        n = Node(stage, node, ['D', vehicle[0], i], node.depth + 1)
-                        if stage and filter_stage(stage, processed_states):
+                        if filter_stage(stage, processed_states):
+                            n = Node(stage, node, ['D', vehicle[0], i],node.depth+1)
                             count += 1
                             if search_type == 1:  # breadth first
                                 que_l.append(n)
@@ -326,18 +326,28 @@ def add_to_processed(stage, processed_states):
         processed_states[idstage] = [stage]
     else:
         found.insert(0, stage)
-
+    delattr(stage, "gmap")
 
 def search(que_l, search_type):
     counter = 0
     processed_nodes = {}
+    depth = 0
     if check_final(que_l[0]):
         return que_l[0]
     while que_l:
         node = que_l.pop(0)
-        # if check_final(node):
-        #     return node
-        #print("Spracovane", counter)
+        if search_type == 0:
+            #vynaram sa vyssie
+            if depth > node.depth:
+                # vycistim processed nodes, tam su posledne referencie na uzly ktore su hlbsie (na tie co su vyssie
+                # mam este referencie cez node.parent cize tie mi zostanu v pamati)
+                # ako momentalna hlbka cize sa vymazu tie objekty uplne (setrim pamat)
+                processed_nodes = {}
+                depth = node.depth
+        else:
+            if depth < node.depth:
+                print("Hlbka",node.depth)
+                depth = node.depth
         #print("Hlbka ", node.depth)
         ch_length = create_children(node, processed_nodes, que_l, search_type)
         #print("vygeneroval som potomkov ",ch_length)
@@ -357,6 +367,7 @@ def search(que_l, search_type):
             return end_node
         counter += 1
         add_to_processed(node.stage, processed_nodes)
+        delattr(node.stage, "id")
     return None
 
 
@@ -368,36 +379,21 @@ def print_steps(result_node):
         if parent.operator is not None:
             steps.insert(0, parent.operator)
         parent = parent.parent
-    print("Pocet krokov",len(steps))
+    print("Pocet krokov", len(steps))
     print(steps)
     print_map(result_node.parent.stage.gmap)
     print_map(result_node.stage.gmap)
 
 
-def main(name):
-    stage = load_stage("stav1.txt")
-    #print_stage(stage)
-    #print_map(stage.gmap)
+def main():
+    search_type = input("Hladanie do sirky 1 hladanie do hlbky 0 \n")
+    file_name = input("Nazov suboru \n")
+    stage = load_stage(file_name)
+    search_type = int(search_type)
     root = Node(stage, None, None, 0)
-    #print_map(stage.gmap)
-    #root.stage.id = calculate_id(root.stage)
-    que = [root] # que
-    # do sirky ma 1 do hlbky 0
-    # print("Hladanie do hlbky")
-    # start = time.time()
-    # result = search(que, processed_nodes, 0)
-    # if result is not None:
-    #     print_steps(result)
-    # else:
-    #     print("Skoncili sme neuspesne")
-    # end = time.time()
-    # print("Cas programu {:0.2f} s".format(end-start))
-    # print("Cas programu {:0.2f} minut".format((end - start)/60))
-
     que = [root]
-    print("Hladanie do sirky")
     start = time.time()
-    result = search(que, 1)
+    result = search(que, search_type)
     if result is not None:
         print_steps(result)
     else:
@@ -410,6 +406,4 @@ def main(name):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    main('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    main()
