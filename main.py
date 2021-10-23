@@ -7,6 +7,7 @@ time_create_children = 0
 time_filter = 0
 time_move = 0
 time_deep_copy =0
+time_no_idea = 0
 
 def copy_stage(stage):
     #vehicles = [vehicle[:] for vehicle in stage.vehicles]
@@ -34,8 +35,8 @@ def move_right(stage, vehicle, steps):
     new_map = new_stage.gmap
     #vycistim tu poziciu kde bolo auto a zaroven pridam novu poziciu
     for k in range(size):
-        new_map[row][column +to_head-k] = 0
-        new_map[row][column+to_head+steps-k] = color #vehicle[0] je farba
+        new_map[row][column +to_head-k] = '0'
+        new_map[row][column+to_head+steps-k] = vehicle[0] #vehicle[0] je farba
     # vyznacim novu poziciu, ked som to mal spolu s tymto cyklom hore tak sa to prepisovalo ak som robil iba napr 1krok
     #new_stage.vehicles[color - 1][3] = str(column+steps)
     new_stage.vehicles[color-1] = vehicle[0]+vehicle[1]+vehicle[2]+str(column+steps)+vehicle[4]
@@ -64,8 +65,8 @@ def move_left(stage, vehicle, steps):
     for k in range(int(vehicle[1])):
         if column+k == 6:
             print("Pls")
-        new_map[row][column + k] = 0
-        new_map[row][column-steps+k]=color
+        new_map[row][column + k] = '0'
+        new_map[row][column-steps+k]=vehicle[0]
     #new_stage.vehicles[color - 1][3] = str(column-steps)
     new_stage.vehicles[color - 1] = vehicle[0] + vehicle[1] + vehicle[2] + str(column - steps) + vehicle[4]
     end = time.time()
@@ -89,8 +90,8 @@ def move_up(stage, vehicle, steps):
     new_map = new_stage.gmap
     # vycistim tu poziciu kde bolo auto a zaroven pridam novu poziciu
     for k in range(size):
-        new_map[row + k][column] = 0
-        new_map[row-steps+k][column]= color
+        new_map[row + k][column] = '0'
+        new_map[row-steps+k][column]= vehicle[0]
     #new_stage.vehicles[color - 1][2] = str(row-steps)
     new_stage.vehicles[color - 1] = vehicle[0] + vehicle[1] + str(row-steps) + vehicle[3] + vehicle[4]
     end = time.time()
@@ -116,8 +117,8 @@ def move_down(stage, vehicle, steps):
     new_map = new_stage.gmap
     # vycistim tu poziciu kde bolo auto a zaroven pridam novu poziciu
     for k in range(size):
-        new_map[row+to_head-k][column] = 0
-        new_map[row+to_head+steps-k][column] = color
+        new_map[row+to_head-k][column] = '0'
+        new_map[row+to_head+steps-k][column] = vehicle[0]
     #new_stage.vehicles[color- 1][2]= str(row+steps)
     new_stage.vehicles[color - 1] = vehicle[0] + vehicle[1] + str(row + steps) + vehicle[3] + vehicle[4]
     end = time.time()
@@ -141,7 +142,7 @@ def load_stage2(name):
     global map_columns
     map_rows = int(l[0])
     map_columns = int(l[1])
-    game_map = [[0 for i in range(map_rows)] for j in range(map_columns)]
+    game_map = [['0' for i in range(map_rows)] for j in range(map_columns)]
     for line in lines[2:]:
         column_offset = 0
         row_offset = 0
@@ -160,44 +161,9 @@ def load_stage2(name):
         for i in range(size):
             r: int = row+i*row_offset
             c: int = column+i*column_offset
-            game_map[r][c] = int(line[0])
+            game_map[r][c] = line[0]
     f.close()
     return Stage(vehicles, game_map)
-
-def load_stage(name):
-    f = open(name, "r")
-    lines = f.readlines()
-    vehicles = []
-    l = lines[1].split(" ")
-    global map_rows
-    global map_columns
-    map_rows = int(l[0])
-    map_columns = int(l[1])
-    game_map = [[0 for i in range(map_rows)] for j in range(map_columns)]
-    for line in lines[2:]:
-        line = line.strip('\n')
-        line = line.split(" ")
-        if line[0][0]=="#":
-            continue
-        color = int(line[0])
-        size = int(line[1])
-        row = int(line[2])
-        column = int(line[3])
-        direction = int(line[4])
-        row_offset, column_offset = 0, 0
-        if direction == 1:
-            column_offset = 1
-        else:
-            row_offset = 1
-        vehicle = Vehicle(color, size, row, column, direction)
-        for i in range(size):
-            r: int = row+i*row_offset
-            c: int = column+i*column_offset
-            game_map[r][c] = color
-        vehicles.append([color, size, row, column, direction])
-    f.close()
-    return Stage(vehicles, game_map)
-
 
 def print_stage(stage):
     for vehicle in stage.vehicles:
@@ -274,13 +240,13 @@ def create_children(node, processed_states, que_l, search_type):
             for i in range(1, map_columns):
                 if column+to_head+i >= map_columns:
                     break
-                if node.stage.gmap[row][column + to_head + i] != 0:
+                if node.stage.gmap[row][column + to_head + i] != '0':
                     break
                 max_right += 1
             for i in range(1, map_columns):
                 if column-i < 0:
                     break
-                if node.stage.gmap[row][column-i] != 0:
+                if node.stage.gmap[row][column-i] != '0':
                     break
                 max_left += 1
             max_steps = max(max_right, max_left)
@@ -294,7 +260,8 @@ def create_children(node, processed_states, que_l, search_type):
                         stage = move_right(node.stage, vehicle, i)
                         # ak je unikatny ten stav, este som ho nespracoval
                         if filter_stage(stage, processed_states):
-                            n = Node(stage, node, ['R', vehicle[0], i], node.depth+1)
+                            s = "R" + vehicle[0] + str(i)
+                            n = Node(stage, node, s, node.depth+1)
                             count += 1
                             if search_type == 1:  # breadth first
                                 que_l.append(n)
@@ -308,7 +275,8 @@ def create_children(node, processed_states, que_l, search_type):
                     if i<=max_left:
                         stage = move_left(node.stage, vehicle, i)
                         if filter_stage(stage, processed_states):
-                            n = Node(stage, node, ['L', vehicle[0], i],node.depth +1)
+                            s = "L" + vehicle[0] + str(i)
+                            n = Node(stage, node, s,node.depth +1)
                             count += 1
                             if search_type == 1:  # breadth first
                                 que_l.append(n)
@@ -321,14 +289,14 @@ def create_children(node, processed_states, que_l, search_type):
             for i in range(1, map_rows):
                 if row+to_head+i > map_rows-1:
                     break
-                if node.stage.gmap[row + to_head + i][column] != 0:
+                if node.stage.gmap[row + to_head + i][column] != '0':
                     break
                 max_down += 1
 
             for i in range(1, map_rows):
                 if row-i < 0:
                     break
-                if node.stage.gmap[row - i][column] != 0:
+                if node.stage.gmap[row - i][column] != '0':
                     break
                 max_up += 1
             max_steps = max(max_up, max_down)
@@ -341,7 +309,8 @@ def create_children(node, processed_states, que_l, search_type):
                         stage = move_up(node.stage, vehicle, i)
                         # ak je unikatny ten stav, este som ho nespracoval
                         if filter_stage(stage, processed_states):
-                            n = Node(stage, node, ['U', vehicle[0], i],node.depth+1)
+                            s = "U" + vehicle[0] + str(i)
+                            n = Node(stage, node, s, node.depth+1)
                             count += 1
                             if search_type == 1:  # breadth first
                                 que_l.append(n)
@@ -351,7 +320,8 @@ def create_children(node, processed_states, que_l, search_type):
                     if i<=max_down:
                         stage = move_down(node.stage, vehicle, i)
                         if filter_stage(stage, processed_states):
-                            n = Node(stage, node, ['D', vehicle[0], i],node.depth+1)
+                            s = "D"+vehicle[0]+str(i)
+                            n = Node(stage, node, s, node.depth+1)
                             count += 1
                             if search_type == 1:  # breadth first
                                 que_l.append(n)
@@ -383,6 +353,7 @@ def add_to_processed(stage, processed_states):
 def search(que_l, search_type):
     counter = 0
     processed_nodes = {}
+    global time_no_idea
     depth = 0
     if check_final(que_l[0]):
         return que_l[0]
@@ -398,10 +369,11 @@ def search(que_l, search_type):
                 depth = node.depth
         else:
             if depth < node.depth:
-                print("Hlbka",node.depth)
+                print("Hlbka", node.depth)
                 depth = node.depth
         #print("Hlbka ", node.depth)
         ch_length = create_children(node, processed_nodes, que_l, search_type)
+        sta = time.time()
         #print("vygeneroval som potomkov ",ch_length)
         #print(len(que_l))
         if ch_length == -1:
@@ -416,10 +388,13 @@ def search(que_l, search_type):
             print("Cize cisty cas create_children ze sa iba hybem a skusam ", time_create_children-time_filter)
             print("Cas kedy sa HYBEM IBA", time_move)
             print("cas copy", time_deep_copy)
+            print("Nvm ",time_no_idea)
             return end_node
         counter += 1
         add_to_processed(node.stage, processed_nodes)
         delattr(node.stage, "id")
+        e = time.time()
+        time_no_idea += e-sta
     return None
 
 

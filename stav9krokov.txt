@@ -1,0 +1,10 @@
+#farba velkost, riadok, stlpec, horizontalne=1/vertikalne=0 9 krokov
+6 6
+12201
+23120
+32021
+43300
+52511
+63431
+72230
+83150
