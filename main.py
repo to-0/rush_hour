@@ -116,9 +116,10 @@ def load_stage2(name):
         column_offset = 0
         row_offset = 0
         line = line.strip('\n')
+        line = line.split(" ")
         if line[0][0]=="#":
             continue
-        vehicles.append(line)
+        vehicles.append([line])
         direction = line[4]
         if direction == "1":
             column_offset = 1
@@ -179,17 +180,17 @@ def check_hash(hashstage, processed_nodes):
 def create_moved_hash(vehicles, color, steps, direction):
     ids = vehicles[:]
     new_vehicle = ""
-    vehicle = vehicles[color]
+    vehicle = ids[color-1]
     if direction == 'R':
         new_vehicle = str(color)+vehicle[1]+vehicle[2]+str(int(vehicle[3])+steps)+vehicle[4]
     elif direction == 'L':
         new_vehicle = str(color) + vehicle[1] + vehicle[2] + str(int(vehicle[3]) - steps) + vehicle[4]
     elif direction == 'U':
-        new_vehicle = str(color) + vehicle[1] + vehicle[2] + vehicle[3] + str(int(vehicle[4]) - steps)
+        new_vehicle = str(color) + vehicle[1] + str(int(vehicle[2]) - steps) + vehicle[3] + vehicle[4]
     elif direction == 'D':
-        new_vehicle = str(color) + vehicle[1] + vehicle[2] + vehicle[3] + str(int(vehicle[4]) - steps)
+        new_vehicle = str(color) + vehicle[1] + str(int(vehicle[2]) + steps)+ vehicle[3] + vehicle[4]
     ids[color-1] = new_vehicle
-    return ids
+    return "".join(ids)
 
 def create_children(node, processed_states, que_l, search_type):
     global time_create_children
@@ -210,12 +211,15 @@ def create_children(node, processed_states, que_l, search_type):
             for i in range(1, map_columns):
                 if column+to_head+i < map_columns and max_right != -1 and node.stage.gmap[row][column+to_head+i] == '0':
                     if history is None or (not (history[0] == 'L' and history[1] == vehicle[0])):
+                        #hash_cars = create_moved_hash(node.stage.vehicles, color, i, 'R')
+                        #if check_hash(hash_cars, processed_states):
                         stage = move_right(node.stage, vehicle, i, row, column, color, size, to_head)
                         # ak je unikatny ten stav, este som ho nespracoval
                         if filter_stage(stage, processed_states):
                             s = "R" + vehicle[0] + str(i)
                             n = Node(stage, node, s, node.depth + 1)
                             count += 1
+                            add_to_created(n.stage, processed_states)
                             if search_type == 1:  # breadth first
                                 que_l.append(n)
                             else:  # depth first
@@ -228,13 +232,14 @@ def create_children(node, processed_states, que_l, search_type):
                     max_right = -1
                 if column-i >= 0 and max_left != -1 and node.stage.gmap[row][column-i] == '0':
                     if history is None or not (history[0] == 'R' and history[1] == vehicle[0]):
-                        hash_cars = create_moved_hash(node.stage.vehicles, color, i, 'L')
-
+                        #hash_cars = create_moved_hash(node.stage.vehicles, color, i, 'L')
+                        #if check_hash(hash_cars,processed_states):
                         stage = move_left(node.stage, vehicle, i, row, column, color, size)
                         if filter_stage(stage, processed_states):
                             s = "L" + vehicle[0] + str(i)
                             n = Node(stage, node, s, node.depth + 1)
                             count += 1
+                            add_to_created(n.stage, processed_states)
                             if search_type == 1:  # breadth first
                                 que_l.append(n)
                             else:  # depth first
@@ -250,30 +255,40 @@ def create_children(node, processed_states, que_l, search_type):
             for i in range(1, map_rows):
                 if row + to_head+i < map_rows and max_down != -1 and node.stage.gmap[row + to_head + i][column] == '0':
                     if history is None or not (history[0] == 'U' and history[1] == vehicle[0]):
+                        #hash_cars = create_moved_hash(node.stage.vehicles, color, i, 'D')
+                        #if check_hash(hash_cars, processed_states):
                         stage = move_down(node.stage, vehicle, i, row, column, color, size, to_head)
                         if filter_stage(stage, processed_states):
                             s = "D" + vehicle[0] + str(i)
                             n = Node(stage, node, s, node.depth + 1)
                             count += 1
+                            add_to_created(n.stage, processed_states)
                             if search_type == 1:  # breadth first
-                                que_l.append(n)
+                                if n not in que_l:
+                                    que_l.append(n)
                             else:  # depth first
-                                que_l.insert(0, n)
+                                if n not in que_l:
+                                    que_l.insert(0, n)
 
                 else:
                     max_down = -1
                 if row-i >= 0 and max_up != -1 and node.stage.gmap[row-i][column]=='0':
                     if history is None or not (history[0] == 'D' and history[1] == vehicle[0]):
+                        #hash_cars = create_moved_hash(node.stage.vehicles, color, i, 'U')
+                        #if check_hash(hash_cars, processed_states):
                         stage = move_up(node.stage, vehicle, i, row, column, color, size)
                         # ak je unikatny ten stav, este som ho nespracoval
                         if filter_stage(stage, processed_states):
                             s = "U" + vehicle[0] + str(i)
                             n = Node(stage, node, s, node.depth + 1)
                             count += 1
+                            add_to_created(n.stage, processed_states)
                             if search_type == 1:  # breadth first
-                                que_l.append(n)
+                                if n not in que_l:
+                                    que_l.append(n)
                             else:  # depth first
-                                que_l.insert(0, n)
+                                if n not in que_l:
+                                    que_l.insert(0, n)
                 else:
                     max_up = -1
 
@@ -293,7 +308,7 @@ def print_map(gmap):
     print("-"*30)
 
 # z kontroly viem ze je to unikatne
-def add_to_processed(stage, processed_states):
+def add_to_created(stage, created_states):
     # idstage = stage.id
     # found = processed_states.get(idstage)
     # if found is None:
@@ -302,9 +317,15 @@ def add_to_processed(stage, processed_states):
     #     found.insert(0, stage)
     idstage = stage.id
     #found = processed_states.get(idstage)
-    processed_states[idstage]=True
-    delattr(stage, "gmap")
-    delattr(stage, "vehicles")
+    created_states[idstage]=True
+
+
+def mark_as_processed(node):
+    delattr(node.stage, "gmap")
+    delattr(node.stage, "vehicles")
+    delattr(node.stage, "id")
+    delattr(node, "depth")
+
 
 def search(que_l, search_type):
     counter = 0
@@ -329,6 +350,7 @@ def search(que_l, search_type):
                 print("Hlbka", node.depth)
                 depth = node.depth
         #print("Hlbka ", node.depth)
+        add_to_created(node.stage, processed_nodes)
         ch_length = create_children(node, processed_nodes, que_l, search_type)
         sta = time.time()
         #print("vygeneroval som potomkov ",ch_length)
@@ -348,9 +370,8 @@ def search(que_l, search_type):
             steps.append(end_node.operator)
             return end_node
         counter += 1
-        add_to_processed(node.stage, processed_nodes)
-        delattr(node.stage, "id")
-        delattr(node, "depth")
+        mark_as_processed(node)
+
         e = time.time()
         time_no_idea += e-sta
         steps.append(node.operator)
