@@ -32,7 +32,7 @@ def move_right(stage, vehicle, steps, row, column, color, size, to_head):
     for k in range(size):
         new_map[row][column +to_head-k] = '0'
         new_map[row][column+to_head+steps-k] = vehicle[0] #vehicle[0] je farba
-    new_stage.vehicles[color-1] = vehicle[0]+vehicle[1]+vehicle[2]+str(column+steps)+vehicle[4]
+    new_stage.vehicles[color-1] = vehicle[0]+" "+vehicle[1]+" "+vehicle[2]+" "+str(column+steps)+" "+vehicle[4]
     end = time.time()
     time_move += end-start
     return new_stage
@@ -54,7 +54,7 @@ def move_left(stage, vehicle, steps, row, column, color, size):
     for k in range(size):
         new_map[row][column + k] = '0'
         new_map[row][column-steps+k]=vehicle[0]
-    new_stage.vehicles[color - 1] = vehicle[0] + vehicle[1] + vehicle[2] + str(column - steps) + vehicle[4]
+    new_stage.vehicles[color - 1] = vehicle[0] +" "+ vehicle[1] + " "+vehicle[2] +" "+ str(column - steps) +" "+ vehicle[4]
     end = time.time()
     time_move += end - start
     return new_stage
@@ -72,7 +72,7 @@ def move_up(stage, vehicle, steps, row, column, color, size):
     for k in range(size):
         new_map[row + k][column] = '0'
         new_map[row-steps+k][column]= vehicle[0]
-    new_stage.vehicles[color - 1] = vehicle[0] + vehicle[1] + str(row-steps) + vehicle[3] + vehicle[4]
+    new_stage.vehicles[color - 1] = vehicle[0] + " "+vehicle[1] +" "+ str(row-steps) +" "+ vehicle[3] +" "+ vehicle[4]
     end = time.time()
     time_move += end - start
     return new_stage
@@ -91,13 +91,14 @@ def move_down(stage, vehicle, steps, row, column, color, size, to_head):
         new_map[row+to_head-k][column] = '0'
         new_map[row+to_head+steps-k][column] = vehicle[0]
     #new_stage.vehicles[color- 1][2]= str(row+steps)
-    new_stage.vehicles[color - 1] = vehicle[0] + vehicle[1] + str(row + steps) + vehicle[3] + vehicle[4]
+    new_stage.vehicles[color - 1] = vehicle[0] +" "+ vehicle[1] +" "+ str(row + steps) +" "+ vehicle[3] + " "+vehicle[4]
     end = time.time()
     time_move += end - start
     return new_stage
 
 def check_final(node):
     vehicle = node.stage.vehicles[0]
+    vehicle = vehicle.split(" ")
     if vehicle[3] == "4":
         return True
     return False
@@ -106,7 +107,8 @@ def load_stage2(name):
     f = open(name, "r")
     lines = f.readlines()
     vehicles = []
-    l = lines[1].split(" ")
+
+    l = lines[1].strip("\n").split(" ")
     global map_rows
     global map_columns
     map_rows = int(l[0])
@@ -116,10 +118,10 @@ def load_stage2(name):
         column_offset = 0
         row_offset = 0
         line = line.strip('\n')
-        line = line.split(" ")
         if line[0][0]=="#":
             continue
-        vehicles.append([line])
+        vehicles.append(line)
+        line = line.split(" ")
         direction = line[4]
         if direction == "1":
             column_offset = 1
@@ -172,25 +174,6 @@ def filter_stage(stage, processed_states):
         time_filter += (end - start)
         return False
 
-def check_hash(hashstage, processed_nodes):
-    if processed_nodes.get(hashstage) is None:
-        return True
-    return False
-
-def create_moved_hash(vehicles, color, steps, direction):
-    ids = vehicles[:]
-    new_vehicle = ""
-    vehicle = ids[color-1]
-    if direction == 'R':
-        new_vehicle = str(color)+vehicle[1]+vehicle[2]+str(int(vehicle[3])+steps)+vehicle[4]
-    elif direction == 'L':
-        new_vehicle = str(color) + vehicle[1] + vehicle[2] + str(int(vehicle[3]) - steps) + vehicle[4]
-    elif direction == 'U':
-        new_vehicle = str(color) + vehicle[1] + str(int(vehicle[2]) - steps) + vehicle[3] + vehicle[4]
-    elif direction == 'D':
-        new_vehicle = str(color) + vehicle[1] + str(int(vehicle[2]) + steps)+ vehicle[3] + vehicle[4]
-    ids[color-1] = new_vehicle
-    return "".join(ids)
 
 def create_children(node, processed_states, que_l, search_type):
     global time_create_children
@@ -199,6 +182,7 @@ def create_children(node, processed_states, que_l, search_type):
     global map_columns
     count = 0
     for vehicle in node.stage.vehicles:
+        vehicle = vehicle.split(" ")
         row = int(vehicle[2])
         column = int(vehicle[3])
         to_head = int(vehicle[1]) - 1
