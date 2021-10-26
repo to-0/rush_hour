@@ -99,7 +99,10 @@ def move_down(stage, vehicle, steps, row, column, color, size, to_head):
 def check_final(node):
     vehicle = node.stage.vehicles[0]
     vehicle = vehicle.split(" ")
-    if vehicle[3] == "4":
+    size = int(vehicle[1])
+    # auto ma velkost 2 a tych colums je vzdy ako keby o 1 viac (realne pocitam od 0) cize mi staci dat columns-size
+    fin = str(map_columns-size)
+    if vehicle[3] == fin:
         return True
     return False
 
@@ -195,15 +198,13 @@ def create_children(node, processed_states, que_l, search_type):
             for i in range(1, map_columns):
                 if column+to_head+i < map_columns and max_right != -1 and node.stage.gmap[row][column+to_head+i] == '0':
                     if history is None or (not (history[0] == 'L' and history[1] == vehicle[0])):
-                        #hash_cars = create_moved_hash(node.stage.vehicles, color, i, 'R')
-                        #if check_hash(hash_cars, processed_states):
                         stage = move_right(node.stage, vehicle, i, row, column, color, size, to_head)
                         # ak je unikatny ten stav, este som ho nespracoval
                         if filter_stage(stage, processed_states):
                             s = "R" + vehicle[0] + str(i)
                             n = Node(stage, node, s, node.depth + 1)
                             count += 1
-                            add_to_created(n.stage, processed_states)
+                            add_to_created(n, processed_states)
                             if search_type == 1:  # breadth first
                                 que_l.append(n)
                             else:  # depth first
@@ -223,7 +224,7 @@ def create_children(node, processed_states, que_l, search_type):
                             s = "L" + vehicle[0] + str(i)
                             n = Node(stage, node, s, node.depth + 1)
                             count += 1
-                            add_to_created(n.stage, processed_states)
+                            add_to_created(n, processed_states)
                             if search_type == 1:  # breadth first
                                 que_l.append(n)
                             else:  # depth first
@@ -246,7 +247,7 @@ def create_children(node, processed_states, que_l, search_type):
                             s = "D" + vehicle[0] + str(i)
                             n = Node(stage, node, s, node.depth + 1)
                             count += 1
-                            add_to_created(n.stage, processed_states)
+                            add_to_created(n, processed_states)
                             if search_type == 1:  # breadth first
                                 if n not in que_l:
                                     que_l.append(n)
@@ -266,7 +267,7 @@ def create_children(node, processed_states, que_l, search_type):
                             s = "U" + vehicle[0] + str(i)
                             n = Node(stage, node, s, node.depth + 1)
                             count += 1
-                            add_to_created(n.stage, processed_states)
+                            add_to_created(n, processed_states)
                             if search_type == 1:  # breadth first
                                 if n not in que_l:
                                     que_l.append(n)
@@ -292,49 +293,41 @@ def print_map(gmap):
     print("-"*30)
 
 # z kontroly viem ze je to unikatne
-def add_to_created(stage, created_states):
+def add_to_created(node, created_states):
     # idstage = stage.id
     # found = processed_states.get(idstage)
     # if found is None:
     #     processed_states[idstage] = [stage]
     # else:
     #     found.insert(0, stage)
-    idstage = stage.id
+    idstage = node.stage.id
     #found = processed_states.get(idstage)
-    created_states[idstage]=True
+    created_states[idstage]=node
 
 
-def mark_as_processed(node):
+def mark_as_processed(node,created_states):
+    created_states[node.stage.id] = True
     delattr(node.stage, "gmap")
     delattr(node.stage, "vehicles")
-    delattr(node.stage, "id")
-    delattr(node, "depth")
+    #delattr(node, "depth")
 
 
 def search(que_l, search_type):
     counter = 0
     processed_nodes = {}
-    steps = []
     global time_no_idea
     depth = 0
     if check_final(que_l[0]):
         return que_l[0]
+    add_to_created(que_l[0], processed_nodes)
     while que_l:
         node = que_l.pop(0)
-        if search_type == 0:
-            #vynaram sa vyssie
-            if depth > node.depth:
-                # vycistim processed nodes, tam su posledne referencie na uzly ktore su hlbsie (na tie co su vyssie
-                # mam este referencie cez node.parent cize tie mi zostanu v pamati)
-                # ako momentalna hlbka cize sa vymazu tie objekty uplne (setrim pamat)
-                processed_nodes = {}
-                depth = node.depth
-        else:
+        if search_type == 1:
             if depth < node.depth:
                 print("Hlbka", node.depth)
                 depth = node.depth
         #print("Hlbka ", node.depth)
-        add_to_created(node.stage, processed_nodes)
+
         ch_length = create_children(node, processed_nodes, que_l, search_type)
         sta = time.time()
         #print("vygeneroval som potomkov ",ch_length)
@@ -346,19 +339,18 @@ def search(que_l, search_type):
                 end_node = que_l[0]
             print("Pocet spracovanych uzlov", counter)
             print("Dlzka frontu na konci", len(que_l))
-            print("Celkovy cas create_children ", time_create_children)
-            print("Z toho cas kedy som filtroval ", time_filter)
-            print("Cize cisty cas create_children ze sa iba hybem a skusam ", time_create_children-time_filter)
-            print("Cas kedy sa HYBEM IBA", time_move)
-            print("cas copy", time_deep_copy)
-            steps.append(end_node.operator)
+            #print("Celkovy cas create_children ", time_create_children)
+            #print("Z toho cas kedy som filtroval ", time_filter)
+            #print("Cize cisty cas create_children ze sa iba hybem a skusam ", time_create_children-time_filter)
+            #print("Cas kedy sa HYBEM IBA", time_move)
+            #print("cas copy", time_deep_copy)
             return end_node
         counter += 1
-        mark_as_processed(node)
+        #if search_type ==1:
+        mark_as_processed(node, processed_nodes)
 
         e = time.time()
         time_no_idea += e-sta
-        steps.append(node.operator)
     return None
 
 
@@ -390,7 +382,7 @@ def main():
         print("Skoncili sme neuspesne")
     end = time.time()
     print("Cas programu {:0.2f} s".format(end - start))
-    print("Cas programu {:0.2f} minut".format((end - start) / 60))
+    print("Cas programu {:0.2f} ms".format((end - start) * 1000))
 
 
 
